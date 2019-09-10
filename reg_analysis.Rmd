@@ -1,0 +1,81 @@
+---
+title: 'Regression Analysis of Fuel Efficiency by Transmission Type'
+author: "M. Sieviec"
+date: "10/7/2018"
+output:
+  pdf_document:
+      toc: true
+---
+
+```{r setup, echo=F,warning=F,message=F,include=F}
+library(ggplot2)
+library(kableExtra)
+library(texreg)
+knitr::opts_chunk$set(echo = TRUE,results="asis",fig.pos = 'H')
+```
+
+## Overview
+
+This report will explore the relationship--if any--between fuel efficiency (in miles per gallon) and transmission type in automobile data from a 1974 issue of *Motor Trend* magazine.
+
+## Part 1 --- Exploratory Analysis
+
+For a cursory glance at a possible relationship, we first load the *mtcars* dataset into R, then create a new factor variable *amf* from the transmission type depicted by the *am* variable with corresponding levels *manual* and *automatic*.
+
+```{r}
+data(mtcars)
+mtcars$amf <- factor(as.character(mtcars$am),labels=c("manual","automatic"))
+```
+
+A box plot of the data is as follows:
+
+```{r fig.align="center",out.height="31%"}
+ggplot(data = mtcars, aes(amf,mpg)) + geom_boxplot() + 
+    ggtitle("Figure 1: Fuel effiency vs. transmission type") + 
+    ylab("Fuel efficiency (mpg)") + xlab("Transmission type")
+```
+
+We see from the plot there may very well be a strong correlation between transmission type and fuel efficiency.
+
+## Part 2 --- Regression Analysis
+
+For the regression analysis three models were compared: one single variable model and two multivariable models. The first model was the previously discussed one where fuel efficiency was predicted only by transmission type. The second model used transmission type and vehicle weight (in tons) as regressors. The third model used transmission type, vehicle weight, and number of cylinders.
+
+```{r}
+model1 <- lm(mpg ~ amf, data = mtcars)
+model2 <- lm(mpg ~ amf + wt, data = mtcars)
+model3 <- lm(mpg ~ amf + wt + cyl, data = mtcars)
+texreg(list(model1,model2,model3),caption.above=T,
+       caption="Regression Models",float.pos = "h")
+
+model1pstats <- summary(model1)$coef[,4]
+model2pstats <- summary(model2)$coef[,4]
+model3pstats <- summary(model3)$coef[,4]
+pstats <- cbind(c(model1pstats,NA,NA),c(model2pstats,NA),model3pstats)
+rownames(pstats)[3:4] <- c("wt","cyl")
+colnames(pstats) <- c("Model 1","Model 2","Model 3")
+pstats %>% kable(booktabs=T,caption="P-Statistics") %>%
+    kable_styling(full_width = F,latex_options = "hold_position")
+```
+
+We also plot the residuals versus fitted values for our third model (R^2 = ~0.83):
+
+```{r fig.align="center",out.height="31%"}
+ggplot(model3) + geom_point(aes(.fitted,.resid)) + xlab("Fitted Values") +
+    ylab("Residuals") + ggtitle("Figure 2: Model 3 residuals")
+```
+
+## Conclusion
+
+We see from our results that, although transmission type is significant in the first model, it is not in the second or third models. Notable differences include the R-squared statistic jumping from ~0.36 in the first model to ~0.75 in the second and ~0.83 in the third, the RSE decreasing significantly with each successive model, and the P-Statistic for *amfautomatic* leaping from < 0.001 to ~0.98 and ~0.89. This suggests that regressing only by transmission type provides little model accuracy and that it is insignificant when either weight or weight and cylinder count are accounted for. We see that in our third, most accurate model that vehicle weight has a significant negative impact on fuel efficiency, with a greater than 3 miles per gallon decrease per one ton, as well as a more than 1.5 miles per gallon decrease for each additional cylinder. This is in constrast to a less than 0.2 miles per gallon increase for an automatic transmission. Finally, our residual plot suggests that there is no obvious pattern to the data, and that our linear model is likely a good one.
+
+## Notes
+
+This analysis was generated using OSX 10.13.6, RStudio v1.1.453 and the 
+following packages:
+
+* ggplot2 v3.0.0
+* kableExtra v0.9.0
+* knitr v1.20
+* texreg v1.36.23
+
